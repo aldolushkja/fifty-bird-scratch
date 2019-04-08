@@ -1,10 +1,17 @@
+-- classic push library
 push = require 'push'
 
+-- classic OOP class library
 Class = require 'class'
 
+-- class representing bird
 require 'Bird'
 
+-- class representing pipe
 require 'Pipe'
+
+-- class representing pair of pipes together
+require 'PipePair'
 
 -- constants
 WINDOW_WIDTH = 1280 
@@ -30,6 +37,9 @@ local BACKGROUND_SCROLL_SPEED = 30
 local GROUND_SCROOL_SPEED = 60
 
 local BACKGROUND_LOOPING_POINT = 413
+
+-- initialize our last recorded Y value for a gap placement to base other gaps off of
+local lastY = -PIPE_HEIGHT + math.random(80) + 20
 
 -- first function called 
 function love.load()
@@ -83,20 +93,29 @@ function love.update(dt)
     spawnTimer = spawnTimer + dt
 
     if spawnTimer > 2 then
-        table.insert(pipes, Pipe())
+        -- modify the last Y coordinate we placed so pipe gaps aren't too far apart
+        -- no higher than 10 pixels below the top edge of the screen,
+        -- and no lower than a gap length (90 pixels) from the bottom
+        local y = math.max(-PIPE_HEIGHT + 10, 
+            math.min(lastY + math.random(-20, 20), VIRTUAL_HEIGHT - 90 - PIPE_HEIGHT))
+        lastY = y
+        
+        table.insert(pipePairs, PipePair(y))
         spawnTimer = 0
     end
         
     bird:update(dt)
 
-    for k, pipe in pairs(pipes) do
-        pipe:update(dt)
-
-        if pipe.x < -pipe.width then
-            table.remove(pipes, k)
+    -- remove any flagged pipes
+    -- we need this second loop, rather than deleting in the previous loop, because
+    -- modifying the table in-place without explicit keys will result in skipping the
+    -- next pipe, since all implicit keys (numerical indices) are automatically shifted
+    -- down after a table removal
+    for k, pair in pairs(pipePairs) do
+        if pair.remove then
+            table.remove(pipePairs, k)
         end
     end
-
 
     love.keyboard.keysPressed = {}
 
